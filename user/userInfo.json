@@ -1,7 +1,0 @@
-{
-  "account": "填上学号",
-  "password": "填上密码",
-  "selfAccid": 1,
-  "friendAccid": 1,
-  "pushplus": "填上微信公众号的pushplus的Token(不需要可以不填)"
-}
