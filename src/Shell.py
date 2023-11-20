@@ -150,6 +150,7 @@ class Shell:
         config = MyConfig()
         # 导入预约信息
         threads = []
+        # 开启多线程预约
         for item in self.mySchedule:
             thread = threading.Thread(target=MyReserveThread, args=(config, item, 1))
             threads.append(thread)

@@ -1,3 +1,5 @@
+import json
+
 import timeout_decorator
 from loguru import logger
 import requests
@@ -51,9 +53,12 @@ class User:
         self.DevTimeSpan = config.get('timeSpan')
 
     def Check_Cookie(self):
-        ifValid = self.Cancel_Submit('10593406fd2049bc864a53486593b3b1').json()
-        if '未登录' in ifValid['message']:
-            self.Update_Cookie()
+        try:
+            ifValid = self.Cancel_Submit('10593406fd2049bc864a53486593b3b1').json()
+            if '未登录' in ifValid['message']:
+                self.Update_Cookie()
+        except json.decoder.JSONDecodeError as e:
+            print('Check_Cookie Error', e)
 
     def __str__(self):
         return f"学号:{self.XueHao}\n" \
@@ -102,8 +107,13 @@ class User:
         if int(self.Weekday[wday]):
             # 时间段循环
             for tSpan in self.DevTimeSpan:
-                res = self.Rsv_Submit(rsvDay, str(DevNo), tSpan[0], tSpan[1]).json()
-                messages.append(f'{rsvDay} {DevNo} {tSpan[0]}-{tSpan[1]} {Color(res["message"], 6)}')
+                res = '啥都没'
+                try:
+                    res = self.Rsv_Submit(rsvDay, str(DevNo), tSpan[0], tSpan[1]).json()
+                    messages.append(f'{rsvDay} {DevNo} {tSpan[0]}-{tSpan[1]} {Color(res["message"], 6)}')
+                except json.decoder.JSONDecodeError as e:
+                    print('JSONDecodeError', e)
+                    messages.append(f'{rsvDay} {DevNo} {tSpan[0]}-{tSpan[1]} {Color(res, 6)}')
         else:
             messages.append(f'{rsvDay} {DevNo}{Color(["此座位您今天不想预约"], 6)}')
         return messages
