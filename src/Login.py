@@ -81,9 +81,6 @@ class Login:
             # 获得location unitoken uuid 参数
             location = self.rr.get(f"{re.findall('service=(.*)', login_url)[0]}?ticket={ticket}"
                                    ).headers.get('Location')
-            # 2023.9.23更新编码问题
-            # unitoken = re.findall('uniToken=(.*)', str(location))[0]  # 获取unitoken
-            # uuid = re.findall('uuid=(.*?)&', str(location))[0]  # 获取 uuid
 
             decoded_url = unquote(location)
             unitoken = re.findall('uniToken=(.*)', str(decoded_url))[0]  # 获取unitoken

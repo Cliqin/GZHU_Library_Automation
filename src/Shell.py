@@ -3,6 +3,7 @@ import traceback
 import json
 import threading
 
+from src.SeatRoom import SeatRoom
 from src.Public import *
 from src.User import User
 
@@ -50,7 +51,7 @@ def Clock():
     for i in res:
         # 判断是否已暂离或已生效
         if i['status'] == 3141 or i['status'] == 1029:
-            print(i['no'], user.Clock_In(i['no']))
+            print(i['no'], user.Clock_In(i['devSn']))
     print('签到操作完成')
 
 
@@ -59,27 +60,72 @@ class Shell:
         self.mySchedule = mySchedule
 
     def __call__(self, *args, **kwargs):
-        # 返回一个更新好cookie的user和config(可以在这里开线程)
+        # 返回一个更新好cookie的user和config
         user, config = MyUser()
 
         try:
             for _ in range(100):
-                mode = input('1--常规约丨2--抢约丨3--取消约丨4--签到丨5--我的预约|6--总时长|7--更新身份|8--查看配置|9--改约|0--退出\n')
+                mode = input(
+                    '1--常规约 丨 2--抢约 丨 3--取消约 | 4--改约 丨 5--签到 丨 6--我的预约 | 7--总时长 | 8--更新身份 | 9--查看配置 | 0--退出 \n')
                 # 每次循环都检查一次登陆状态
                 user.Check_Cookie()
 
                 if mode == '1':
-                    # 导入预约信息
-                    for item in self.mySchedule:
-                        config.update(item)
-                        user.Switch_Config(config=config)
-                        msgs = user.Broadly_Submit(timeFlag=0)
-                        for i in msgs:
-                            print(i)
+                    sub_mode = input("1--遍历schedule | 2--指定约\n")
+                    if sub_mode == '1':
+                        # 导入预约信息
+                        for item in self.mySchedule:
+                            config.update(item)
+                            user.Switch_Config(config=config)
+                            msgs = user.Broadly_Submit(timeFlag=0)
+                            for i in msgs:
+                                print(i)
+                    elif sub_mode == '2':
+                        info = {}
+
+                        dayDelta = int(input("0--今天 | 1--明天 | 2--后天\n"))
+                        rsvDay = datetime.date.today() + datetime.timedelta(days=dayDelta)  # 时间推后一天
+
+                        info['date'] = rsvDay.strftime('%Y-%m-%d')  # 字符串化:2023-04-11
+                        info['dev'] = input("请输入设备名字 例: 101-001 | 研讨间E09\n")
+                        # 前头自动补零操作: 补两个零
+                        info['bt'] = str('%02d' % int(input('请输入开始小时:\t'))) + ":"
+                        info['bt'] += str('%02d' % int(input('请输入开始分钟:\t'))) + ":00"
+                        info['et'] = str('%02d' % int(input('请输入结束小时:\t'))) + ":"
+                        info['et'] += str('%02d' % int(input('请输入结束分钟:\t'))) + ":00"
+                        polish = [info['date'], info['dev'], info['bt'], info['et']]
+                        print('请确认', Color(polish, 6))
+                        confirm = input('1--提交|0--撤回操作\n')
+                        if confirm == '1':
+                            res = user.Rsv_Submit(info['date'], info['dev'], info['bt'], info['et']).json()
+                            print(Color(res["message"], 6))
+                        else:
+                            print('已撤回')
+
                 elif mode == '2':
                     date = input('请输入日期(例:2023-6-26)\n')
-                    keeptime = float(input('请输入持续搜索时间(单位/秒)|无需定时请输入0\n'))
-                    user.Timer_Predator(date, keeptime)
+                    date = date if len(date) else "2023-12-10"
+
+                    index = input("如果是座位,请输入座位所在楼层(回车默认选研讨间)\n")
+                    index = int(index) - 1 if len(index) else None
+
+                    marginSpan = None
+                    seatRoom = None
+                    if index >= 0:
+                        for i, v in enumerate(SeatRoom[index]["children"]):
+                            print(i, v['name'], v['id'])
+
+                        seatRoom = SeatRoom[index]["children"][int(input("请继续选择\n"))]['id']
+
+                        marginStart = input("输入所抢时段\n开始时段(例13:00)回车默认不做限制\t")
+                        marginEnd = input("\n输入所抢时段\n结束小时(14:00)回车默认不做限制\t")
+
+                        marginSpan = [marginStart + ":00", marginEnd + ":00"] if len(marginStart) or len(
+                            marginEnd) else None
+
+                    keepTime = input('\n请输入持续搜索时间(单位/秒)|无需定时请输入0\n')
+                    keepTime = float(keepTime) if len(keepTime) else 0
+                    user.Timer_Predator(date=date, seatRoom=seatRoom, marginSpan=marginSpan, keepTime=keepTime)
                 elif mode == '3':
                     '''显示已预约的信息,再进行选择'''
                     res = user.My_Reserve()
@@ -87,29 +133,31 @@ class Shell:
                         tmp = f"{i['no']} \t{i['bt']}"
                         print(f"{index}\t{Color(tmp, 1)}--{i['et']}\t状态:{status(i['status'])}")
                     p = int(input('请选择序号0-20\n'))
-                    today = res[p]["bt"][:10]
-                    dev = res[p]["no"]
-                    previous = [today, res[p]["bt"][11:], res[p]["et"], dev]
-                    print('你已选中', Color(previous, 6))
+
+                    selected = f'{res[p]["no"]} {res[p]["bt"][:10]} {res[p]["bt"][11:]}--{res[p]["et"]}'
+                    print('你已选中', p, Color(selected, 6))
+
                     confirm = input('1--提交|0--撤回操作\n')
                     if confirm == '1':
                         print(user.Cancel_Submit(res[p]['uuid']).json()['message'])
                     else:
                         print('已撤回')
                 elif mode == '4':
+                    user.Rescheduling()
+                elif mode == '5':
                     res = user.My_Reserve()
                     for i in res:
                         # 判断是否已暂离或已生效
                         if i['status'] == 3141 or i['status'] == 1029:
-                            print(i['no'], user.Clock_In(i['no']))
+                            print(i['no'], user.Clock_In(i['devSn']))
                     print('签到操作完成')
-                elif mode == '5':
+                elif mode == '6':
                     '''显示已预约的信息'''
                     res = user.My_Reserve()
                     for index, i in enumerate(res):
                         tmp = f"{i['no']} \t{i['bt']}"
                         print(f"{index}\t{Color(tmp, 2)}--{i['et']}\t状态:{status(i['status'])}")
-                elif mode == '6':
+                elif mode == '7':
                     r, rr, s, rs = user.My_Reserve(1)
                     tmp = f'总计: 研讨室: {r}时(约)-{rr}时(实)   \t座位: {s}时(约)-{rs}时(实)'
                     print(Color(tmp, 6))
@@ -119,7 +167,7 @@ class Shell:
                     r, rr, s, rs = user.My_Reserve(3)
                     tmp = f'上月: 研讨室: {r}时(约)-{rr}时(实)   \t座位: {s}时(约)-{rs}时(实)'
                     print(Color(tmp, 3))
-                elif mode == '7':
+                elif mode == '8':
                     tmp_Id = user.Get_Accid()
                     if not user.Id == tmp_Id:
                         # 更新程序里的
@@ -133,11 +181,9 @@ class Shell:
                         print('更新完毕', user.Id)
                     else:
                         print('无需更新')
-                elif mode == '8':
+                elif mode == '9':
                     print(user)
                     # print(user.Clock_In('研讨间E13'))
-                elif mode == '9':
-                    user.Rescheduling()
                 elif mode == '0':
                     exit(0)
                 else:
@@ -152,6 +198,7 @@ class Shell:
         threads = []
         # 开启多线程预约
         for item in self.mySchedule:
+            # 传入等待时间参数
             thread = threading.Thread(target=MyReserveThread, args=(config, item, 1))
             threads.append(thread)
 
