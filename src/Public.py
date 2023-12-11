@@ -110,7 +110,7 @@ def optimalSpan(startList, endList):
         # 3600等于一个小时 (秒级时间戳)
         oneHour = 3600000
         # 存在大于等于2.5小时小于等于4小时的时间段哦
-        if oneHour * 1 <= (startList[index] - i) <= oneHour * 4:
+        if oneHour * 3.2 <= (startList[index] - i) <= oneHour * 4:
             tmp = [0, 0, 0]
             tmp[0] = i
             tmp[1] = startList[index]
@@ -219,7 +219,7 @@ def calc_dev_no(devName):
             return 100587126 + end - 1
         case '306':
             if end >= 65:
-                return 101267688 + end - 1
+                return 101267704 + end - 1
             return 100589685 + end - 1
         case '307':
             return 100589749 + end - 1

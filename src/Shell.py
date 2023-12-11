@@ -55,6 +55,13 @@ def Clock():
     print('签到操作完成')
 
 
+def Predator(date, seatRoom=None, marginSpan=None, keepTime=None):
+    user, config = MyUser()
+    # 2023-12-11 100647014 ['12:00:00', '16:00:00'] 0
+    user.Timer_Predator(date=date, seatRoom=seatRoom, marginSpan=marginSpan, keepTime=keepTime)
+    print('抢夺操作完成')
+
+
 class Shell:
     def __init__(self, mySchedule):
         self.mySchedule = mySchedule
@@ -125,6 +132,8 @@ class Shell:
 
                     keepTime = input('\n请输入持续搜索时间(单位/秒)|无需定时请输入0\n')
                     keepTime = float(keepTime) if len(keepTime) else 0
+                    # 2023-12-11 100647014 ['12:00:00', '16:00:00'] 0
+                    print(date, seatRoom, marginSpan, keepTime)
                     user.Timer_Predator(date=date, seatRoom=seatRoom, marginSpan=marginSpan, keepTime=keepTime)
                 elif mode == '3':
                     '''显示已预约的信息,再进行选择'''
