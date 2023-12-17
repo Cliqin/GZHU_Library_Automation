@@ -6,6 +6,7 @@ from loguru import logger
 import requests
 
 from src.rsa import RSA
+
 BASIC_URL = 'http://libbooking.gzhu.edu.cn/ic-web'
 
 
@@ -78,10 +79,14 @@ class Login:
             # 返回的请求头有ticket信息
             location = res.headers.get('Location')
             ticket = re.findall('ticket=(.*)', location)[0]  # 获取ticket
-            # 获得location unitoken uuid 参数
-            location = self.rr.get(f"{re.findall('service=(.*)', login_url)[0]}?ticket={ticket}"
-                                   ).headers.get('Location')
 
+            tmp_url = str(re.findall('service=(.*)', login_url)[0])
+            # 从unicode转成utf-8
+            tmp_url = unquote(tmp_url)
+            location_res = self.rr.get(url=f"{tmp_url}?ticket={ticket}")
+
+            # 获得location unitoken uuid 参数
+            location = location_res.headers.get('Location')
             decoded_url = unquote(location)
             unitoken = re.findall('uniToken=(.*)', str(decoded_url))[0]  # 获取unitoken
             uuid = re.findall('uuid=(.*?)&', str(decoded_url))[0]  # 获取 uuid

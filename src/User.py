@@ -1,7 +1,6 @@
 import json
 
 import timeout_decorator
-from loguru import logger
 import requests
 
 from src.Login import Login
@@ -30,7 +29,7 @@ class User:
         self.Cookie = config.get('cookie')
 
         if self.Cookie == '':
-            logger.info('cookie.txt未填写登录信息')
+            logger.error('cookie.txt未填写登录信息')
 
         '''请求配置'''
 
@@ -58,7 +57,7 @@ class User:
             if '未登录' in ifValid['message']:
                 self.Update_Cookie()
         except json.decoder.JSONDecodeError as e:
-            print('Check_Cookie Error', e)
+            logger.exception(f'Check_Cookie Error,{e}')
 
     def __str__(self):
         return f"学号:{self.XueHao}\n" \
@@ -79,7 +78,7 @@ class User:
         self.Cookie = None
         count = 0
         while self.Cookie is None or len(self.Cookie) == 0:
-            logger.info(f'try to log in with {count + 1}th times')
+            logger.error(f'try to log in with {count + 1}th times')
             if count > 20:
                 return '多次尝试都登陆不了'
             self.Cookie = Login(self.XueHao, self.MiMa, self.pushplus).Get_LoginUrl()
@@ -97,7 +96,10 @@ class User:
     def Broadly_Submit(self, timeFlag=None):
         messages = []
         DevNo = str(self.DevNo)
-        if '-' in DevNo:
+        if '#' in DevNo[0]:
+            rsvDay = datetime.date.today() + datetime.timedelta(days=0)  # 时间推后零天
+            DevNo = DevNo.replace("#", "")
+        elif '-' in DevNo:
             rsvDay = datetime.date.today() + datetime.timedelta(days=1)  # 时间推后一天
         else:
             rsvDay = datetime.date.today() + datetime.timedelta(days=3)  # 时间推后三天
@@ -113,10 +115,17 @@ class User:
             for tSpan in self.DevTimeSpan:
                 res = '解析失败'
                 try:
-                    res = self.Rsv_Submit(rsvDay, DevNo, tSpan[0], tSpan[1]).json()
+                    info = {
+                        'rsvDay': rsvDay,
+                        'dev': DevNo,
+                        'bt': tSpan[0],
+                        'et': tSpan[1]
+
+                    }
+                    res = self.Rsv_Submit(info).json()
                     messages.append(f'{rsvDay} {DevNo} {tSpan[0]}-{tSpan[1]} {Color(res["message"], 6)}')
                 except json.decoder.JSONDecodeError as e:
-                    print('JSONDecodeError', e)
+                    logger.exception(f'JSONDecodeError, {e}')
                     messages.append(f'{rsvDay} {DevNo} {tSpan[0]}-{tSpan[1]} {Color(res, 6)}')
         else:
             messages.append(f'{rsvDay} {DevNo}{Color(["此座位您今天不想预约"], 6)}')
@@ -124,44 +133,36 @@ class User:
 
     '''精准预约发送请求函数'''
 
-    def Rsv_Submit(self, rsvday, dev, start, end):
+    def Rsv_Submit(self, info):
         url = BASIC_URL + '/reserve'
-        # 判断是否研讨室还是座位
-        if '-' in str(dev):
-            '''座位'''
-            seat = {
-                "appAccNo": self.Id,
-                "captcha": "",
-                "memberKind": 1,
-                "memo": "搞学习",
-                "resvBeginTime": f"{rsvday} {start}",
-                "resvDev": [calc_dev_no(dev)],
-                "resvEndTime": f"{rsvday} {end}",
-                "resvMember": [self.Id],
-                "resvProperty": 0,
-                "sysKind": 8,
-                "testName": "",
-            }
-            return requests.post(url=url, headers=self.header, json=seat)
-        '''研讨室'''
-        seminar = {
-            'addServices': [],
-            'appAccNo': self.Id,
-            'appUrl': "",
-            'captcha': "",
-            'memberKind': 2,
-            'memo': "学习",
-            'resvBeginTime': f"{rsvday} {start}",
-            'resvDev': [calc_dev_no(dev)],
-            'resvEndTime': f"{rsvday} {end}",
-            'resvKind': 2,
-            # 如果有朋友标志,则在列表后添加朋友Id
-            'resvMember': [self.Id, self.FriendId] if self.FriendFlag else [self.Id],
-            'resvProperty': 0,
-            'sysKind': 1,
-            'testName': "学习",
+
+        '''座位'''
+        data = {
+            "appAccNo": self.Id,
+            "captcha": "",
+            "memberKind": 1,
+            "memo": "搞学习",
+            "resvBeginTime": f"{info.get('rsvDay')} {info.get('bt')}",
+            "resvDev": [calc_dev_no(info.get('dev'))],
+            "resvEndTime": f"{info.get('rsvDay')} {info.get('et')}",
+            "resvMember": [self.Id, self.FriendId] if self.FriendFlag else [self.Id],
+            "resvProperty": 0,
+            "sysKind": 8,
+            "testName": "学习",
         }
-        return requests.post(url=url, headers=self.header, json=seminar)
+        # 判断是否研讨室还是座位
+        if '-' not in str(info['dev']):
+            '''研讨室'''
+            to_update = {
+                'addServices': [],
+                'appUrl': "",
+                'memberKind': 2,
+                'resvKind': 2,
+                'sysKind': 1,
+            }
+            data.update(to_update)
+
+        return requests.post(url=url, headers=self.header, json=data)
 
     '''查看我的预约'''
 
@@ -228,74 +229,34 @@ class User:
             myList.append(item)
         return myList
 
-    '''修改预约(需要改动)'''
-
-    def Rescheduling(self):
-        """显示已预约的信息,再进行选择"""
-        res = self.My_Reserve()
-        for index, i in enumerate(res):
-            tmp = Color(f"{i['no']} \t{i['bt']}", 1)
-            print(f"{index}\t {tmp}--{i['et']}\t状态:{status(i['status'])}")
-        p = int(input('请选择序号0-20\n'))
-        # optimal = [[0, 0, 0], 0]  # [[开始时间,结束时间,时间间隔],房号]  毫秒级
-        today = res[p]["bt"][:10]
-        dev = res[p]["no"]
-        previous = [today, res[p]["bt"][11:], res[p]["et"], dev]
-        print('你已选中', Color(previous, 6))
-        # 前头自动补零操作: 补两个零
-        new_bhour = str('%02d' % int(input('请输入开始小时:\t')))
-        new_bmin = str('%02d' % int(input('请输入开始分钟:\t')))
-        new_ehour = str('%02d' % int(input('请输入结束小时:\t')))
-        new_emin = str('%02d' % int(input('请输入结束分钟:\t')))
-        polish = [today, f'{new_bhour}:{new_bmin}', f'{new_ehour}:{new_emin}', dev]
-        print('转换前', Color(previous, 6))
-        print('转换后', Color(polish, 6))
-        confirm = input('1--提交|0--撤回操作\n')
-        if confirm == '1':
-            if '-' in polish[3]:
-                print(dev, self.Cancel_Submit(res[p]["uuid"]).json()['message'])
-
-                res = self.Rsv_Submit(polish[0], polish[3], polish[1] + ':00', polish[2] + ':00').json()
-                print(today, polish[3], polish[1] + ':00', polish[2] + ':00', Color(res['message'], 6))
-
-                res = self.Rsv_Submit(previous[0], previous[3], previous[1] + ':00', previous[2] + ':00').json()
-                print('重新选回座位', Color(res['message'], 6))
-                return
-            for i, v in RoomList.items():
-                if v == polish[3]:
-                    print(dev, self.Cancel_Submit(res[p]["uuid"]).json()['message'])
-
-                    res = self.Rsv_Submit(polish[0], i, polish[1] + ':00', polish[2] + ':00').json()
-                    print(today, polish[3], polish[1] + ':00', polish[2] + ':00', Color(res['message'], 6))
-
-                    res = self.Rsv_Submit(previous[0], i, previous[1] + ':00', previous[2] + ':00').json()
-                    print('重新选回座位', Color(res['message'], 6))
-                    return
-        else:
-            print('已撤回')
-
     '''抢预约的精准发送表单'''
 
     def Precision_Submit(self, optimal, minUser):
-        print('暂无')
         # 判断是否有预约位置信息
         if optimal[1] == 0:
+            logger.error("无预约位置信息")
             return
         # 输入数据
         rsvDay = DT.fromtimestamp(optimal[0][0] / 1000).strftime('%Y-%m-%d')  # 预约日期
         devId = optimal[1]  # 预约房间
         sT = DT.fromtimestamp(optimal[0][0] / 1000).strftime('%H:%M:%S')  # 开始时间
         eT = DT.fromtimestamp(optimal[0][1] / 1000).strftime('%H:%M:%S')  # 结束时间
+        info = {
+            'rsvDay': rsvDay,
+            'dev': devId,
+            'bt': sT,
+            'et': eT
+        }
         if minUser == 1:
             self.FriendFlag = 0
-            res = self.Rsv_Submit(rsvDay, devId, sT, eT).json()
+            res = self.Rsv_Submit(info).json()
             return f"{rsvDay}, {devId}, {sT}, {eT}, {[self.Id]}, {Color(res['message'], 6)}"
         elif minUser == 2:
             self.FriendFlag = 1
-            res = self.Rsv_Submit(rsvDay, devId, sT, eT).json()
-            return f"{rsvDay}, {devId}, {sT}, {eT}, {[self.Id, self.FriendId]}, {Color(res['message'], 6)}"
+            res = self.Rsv_Submit(info).json()
+            return f"{rsvDay}, {devId}, {sT}, {eT},  {Color(res['message'], 6)}"
         else:
-            return "人数超过2人"
+            return "人数超过2人(功能还未完善)"
 
     '''取消某个预约'''
 
@@ -304,7 +265,7 @@ class User:
             return requests.post(url=BASIC_URL + '/reserve/delete', headers=self.header, json={'uuid': uuid},
                                  timeout=20)
         except Exception as e:
-            print(e)
+            logger.exception(e)
             exit(0)
 
     '''签到与暂离回来功能'''
@@ -326,10 +287,11 @@ class User:
         login_res = requests.post(url=login_url, headers=self.header, json=login_data).json()
 
         if login_res['data'] is None:
-            print(login_res)
+            logger.error("login_res['data'] 找不到")
             return "data 找不到"
         else:
             if login_res['data']['reserveInfo'] is None:
+                logger.error('可能该预约还未生效,请稍后再试')
                 return '可能该预约还未生效,请稍后再试'
         # 会生成一个resvId出来,通过这个resvId来进行sign和comeback
         resvId = login_res['data']['reserveInfo']['resvId']
@@ -351,23 +313,23 @@ class User:
 
     '''设置Predator定时器'''
 
-    def Timer_Predator(self, date, seatRoom=None, marginSpan=None, keepTime=None):
+    def Timer_Predator(self, date, seatRoom=None, marginSpan=None, keepTime=None, minHour=4):
         @timeout_decorator.timeout(keepTime)
         def do_time():
-            self.Predator(date=date, seatRoom=seatRoom, marginSpan=marginSpan)
+            return self.Predator(date=date, seatRoom=seatRoom, marginSpan=marginSpan, minHour=minHour)
 
         def do():
-            self.Predator(date=date, seatRoom=seatRoom, marginSpan=marginSpan)
+            return self.Predator(date=date, seatRoom=seatRoom, marginSpan=marginSpan, minHour=minHour)
 
         # 判断keepTime是否为0或None
         if keepTime:
-            do_time()
+            return do_time()
         else:
-            do()
+            return do()
 
     '''时刻捕获空缺的时间段'''
 
-    def Predator(self, date, seatRoom=None, marginSpan=None, timeMargin=None):
+    def Predator(self, date, seatRoom=None, marginSpan=None, minHour=4):
         seminarFlag = True
         # 判断是座位还是研讨室
         if seatRoom:
@@ -375,13 +337,14 @@ class User:
 
         rsvDay = datetime.datetime.strptime(date, '%Y-%m-%d')
         weekday = int(rsvDay.weekday())  # 获取星期 0为星期一
-        print(f'预约日期: {rsvDay} 星期: {weekday + 1}')
-        print(f'限定时间范围: {marginSpan}')
+        logger.info(f'预约日期: {rsvDay} 星期: {weekday + 1} 限定时间范围: {marginSpan}')
+        logger.info('正在检索中,请耐心等待')
+
         rsvDay = rsvDay.strftime('%Y%m%d')  # 字符串化:20230411
 
         optimal = [[0, 0, 0], 0]  # [[开始时间,结束时间,时间间隔],房号]
         minUser = 1
-        print('正在检索中,请耐心等待')
+
         while optimal[0][2] == 0:
             # 获得所有房间的信息
             data = self.Retrieve(date=rsvDay, seatRoom=seatRoom, seminarFlag=seminarFlag).json()
@@ -393,8 +356,8 @@ class User:
                     sT1, eT1 = sortSpan(f'{rsvDay} 13:30:00', f'{rsvDay} 16:30:00', i['resvInfo'])
                     sT2, eT2 = sortSpan(f'{rsvDay} 18:30:00', f'{rsvDay} 21:30:00', i['resvInfo'])
                     # temp1[开始时间,结束时间,时间间隔]
-                    tmp1 = optimalSpan(sT1, eT1)
-                    tmp2 = optimalSpan(sT2, eT2)
+                    tmp1 = optimalSpan(sT1, eT1, minHour)
+                    tmp2 = optimalSpan(sT2, eT2, minHour)
 
                     # 如果temp1的间隔比较大
                     if tmp1[2] < tmp2[2]:
@@ -430,21 +393,18 @@ class User:
             time.sleep(1)
         nowStamp = round(time.time() * 1000)
 
-        # 如果开始时间与当前时间很接近时,推迟半小时预约
+        # 如果开始时间与当前时间很接近时,推迟15分钟预约
         if abs(nowStamp - optimal[0][0]) <= 450000:
-            optimal[0][0] = nowStamp + 1800000
+            optimal[0][0] = nowStamp + 900000
 
-        a = ChineseTime(optimal[0][0])
-        b = ChineseTime(optimal[0][1])
-        tmp = [[a, b, round(optimal[0][2] / 3600000, 2)], optimal[1]]
-        print('转化optimal: ', tmp, minUser)
-        print(self.Precision_Submit(optimal, minUser))
+        return self.Precision_Submit(optimal, minUser)
 
     '''获得某一天某个房间的预约时间预约情况'''
 
     def Retrieve(self, date, seatRoom=None, seminarFlag=True):
-        # 对研讨室发起查询
+
         if seminarFlag:
+            # 对研讨室发起查询
             params = {
                 'sysKind': '1',
                 'resvDates': date,  # 20231210
@@ -456,7 +416,7 @@ class User:
         else:
             # 对座位区域发起查询
             params = {
-                'roomIds': 100647013 if seatRoom is None else seatRoom,  # 101区域
+                'roomIds': 100647013 if seatRoom is None else seatRoom,  # 101 区域
                 'resvDates': date,  # 20231210
                 'sysKind': 8,
             }

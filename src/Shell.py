@@ -55,11 +55,11 @@ def Clock():
     print('签到操作完成')
 
 
-def Predator(date, seatRoom=None, marginSpan=None, keepTime=None):
+def Predator(date, seatRoom=None, marginSpan=None, keepTime=None, minHour=4):
     user, config = MyUser()
     # 2023-12-11 100647014 ['12:00:00', '16:00:00'] 0
-    user.Timer_Predator(date=date, seatRoom=seatRoom, marginSpan=marginSpan, keepTime=keepTime)
-    print('抢夺操作完成')
+    msg = user.Timer_Predator(date=date, seatRoom=seatRoom, marginSpan=marginSpan, keepTime=keepTime, minHour=minHour)
+    print('抢夺操作完成',msg)
 
 
 class Shell:
@@ -93,18 +93,17 @@ class Shell:
                         dayDelta = int(input("0--今天 | 1--明天 | 2--后天\n"))
                         rsvDay = datetime.date.today() + datetime.timedelta(days=dayDelta)  # 时间推后一天
 
-                        info['date'] = rsvDay.strftime('%Y-%m-%d')  # 字符串化:2023-04-11
+                        info['rsvDay'] = rsvDay.strftime('%Y-%m-%d')  # 字符串化:2023-04-11
                         info['dev'] = input("请输入设备名字 例: 101-001 | 研讨间E09\n")
                         # 前头自动补零操作: 补两个零
-                        info['bt'] = str('%02d' % int(input('请输入开始小时:\t'))) + ":"
-                        info['bt'] += str('%02d' % int(input('请输入开始分钟:\t'))) + ":00"
-                        info['et'] = str('%02d' % int(input('请输入结束小时:\t'))) + ":"
-                        info['et'] += str('%02d' % int(input('请输入结束分钟:\t'))) + ":00"
-                        polish = [info['date'], info['dev'], info['bt'], info['et']]
-                        print('请确认', Color(polish, 6))
+                        info['bt'] = str('%02d' % int(input('请输入开始小时:\t'))) + ":" + str(
+                            '%02d' % int(input('请输入开始分钟:\t'))) + ":00"
+                        info['et'] = str('%02d' % int(input('请输入结束小时:\t'))) + ":" + str(
+                            '%02d' % int(input('请输入结束分钟:\t'))) + ":00"
+                        print('请确认', Color(info.values(), 6))
                         confirm = input('1--提交|0--撤回操作\n')
                         if confirm == '1':
-                            res = user.Rsv_Submit(info['date'], info['dev'], info['bt'], info['et']).json()
+                            res = user.Rsv_Submit(info).json()
                             print(Color(res["message"], 6))
                         else:
                             print('已撤回')
@@ -113,7 +112,7 @@ class Shell:
                     date = input('请输入日期(例:2023-6-26)\n')
                     date = date if len(date) else "2023-12-10"
 
-                    index = input("如果是座位,请输入座位所在楼层(回车默认选研讨间)\n")
+                    index = input("输入座位所在楼层(1-5)(回车默认选研讨间)\n")
                     index = int(index) - 1 if len(index) else None
 
                     marginSpan = None
@@ -127,14 +126,17 @@ class Shell:
                         marginStart = input("输入所抢时段\n开始时段(例13:00)回车默认不做限制\t")
                         marginEnd = input("\n输入所抢时段\n结束小时(14:00)回车默认不做限制\t")
 
-                        marginSpan = [marginStart + ":00", marginEnd + ":00"] if len(marginStart) or len(
-                            marginEnd) else None
+                        if len(marginStart) or len(marginEnd):
+                            marginSpan = [marginStart + ":00", marginEnd + ":00"]
+                        else:
+                            marginSpan = None
 
-                    keepTime = input('\n请输入持续搜索时间(单位/秒)|无需定时请输入0\n')
+                    keepTime = input('\n请输入持续搜索时间(单位/秒)|无需定时请按回车\n')
                     keepTime = float(keepTime) if len(keepTime) else 0
                     # 2023-12-11 100647014 ['12:00:00', '16:00:00'] 0
                     print(date, seatRoom, marginSpan, keepTime)
-                    user.Timer_Predator(date=date, seatRoom=seatRoom, marginSpan=marginSpan, keepTime=keepTime)
+                    msg = user.Timer_Predator(date=date, seatRoom=seatRoom, marginSpan=marginSpan, keepTime=keepTime)
+                    print(Color(msg, 6))
                 elif mode == '3':
                     '''显示已预约的信息,再进行选择'''
                     res = user.My_Reserve()
@@ -152,7 +154,41 @@ class Shell:
                     else:
                         print('已撤回')
                 elif mode == '4':
-                    user.Rescheduling()
+                    """显示已预约的信息,再进行选择"""
+                    res = user.My_Reserve()
+                    for index, i in enumerate(res):
+                        tmp = Color(f"{i['no']} \t{i['bt']}", 1)
+                        print(f"{index}\t {tmp}--{i['et']}\t状态:{status(i['status'])}")
+                    p = int(input('请选择序号0-20\n'))
+
+                    pre_info = {
+                        'dev': res[p]["no"],
+                        'rsvDay': res[p]['bt'][:10],
+                        'bt': res[p]['bt'][11:] + ":00",
+                        'et': res[p]['et'] + ":00",
+                        'uuid': res[p]['uuid'],
+                    }
+                    print('你已选中', Color(pre_info.values(), 6))
+                    new_info = pre_info.copy()
+                    new_dev = input("输入设备名字(101-001 || 研讨间E09)-(回车则不需要变)\n")
+                    new_info['dev'] = new_dev if len(new_dev) > 0 else new_info['dev']
+                    new_info['bt'] = str('%02d' % int(input('请输入开始小时:\t'))) + ":" + str(
+                        '%02d' % int(input('请输入开始分钟:\t'))) + ":00"
+                    new_info['et'] = str('%02d' % int(input('请输入结束小时:\t'))) + ":" + str(
+                        '%02d' % int(input('请输入结束分钟:\t'))) + ":00"
+                    print('转换前', Color(pre_info.values(), 6))
+                    print('转换后', Color(new_info.values(), 5))
+                    confirm = input('1--提交|0--撤回操作\n')
+                    if confirm == '1':
+                        print(pre_info['dev'], user.Cancel_Submit(pre_info['uuid']).json()['message'])
+
+                        res = user.Rsv_Submit(new_info).json()
+                        print(Color(res["message"], 6))
+
+                        res = user.Rsv_Submit(pre_info).json()
+                        print('重新选回座位', Color(res['message'], 6))
+                    else:
+                        print('已撤回')
                 elif mode == '5':
                     res = user.My_Reserve()
                     for i in res:

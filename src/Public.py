@@ -93,7 +93,7 @@ def status(no):
 '''计算是否有可预约时间'''
 
 
-def optimalSpan(startList, endList):
+def optimalSpan(startList, endList, minHour=4):
     optimal = [0, 0, 0]  # [开始时间,结束时间,时间间隔]
     # 时间仍为时间戳格式
     nowStamp = round(time.time() * 1000)
@@ -107,10 +107,10 @@ def optimalSpan(startList, endList):
             # 否则 跳过这一轮无意义的比较
             else:
                 continue
-        # 3600等于一个小时 (秒级时间戳)
+        # 3600000等于一个小时 (秒级时间戳)
         oneHour = 3600000
         # 存在大于等于2.5小时小于等于4小时的时间段哦
-        if oneHour * 3.2 <= (startList[index] - i) <= oneHour * 4:
+        if oneHour * minHour <= (startList[index] - i) <= oneHour * 4:
             tmp = [0, 0, 0]
             tmp[0] = i
             tmp[1] = startList[index]
@@ -303,7 +303,7 @@ def Wait_OnTime(myWaitTime=None):
     if myWaitTime is None:
         myWaitTime = [6, 15, 1]
 
-    tomorrow = DT.replace(DT.now(), hour=myWaitTime[0], minute=myWaitTime[1], second=myWaitTime[2])
+    tomorrow = DT.replace(DT.now(), hour=myWaitTime[0], minute=myWaitTime[1], second=myWaitTime[2] + 1)
     print(f'等待到{tomorrow}再执行预约')
     time.sleep((tomorrow - DT.now()).seconds)
 
