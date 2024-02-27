@@ -14,7 +14,7 @@ class User:
 
     def __init__(self, config):
         # config = dict(config)
-        self.myWaitTime = config.get('myWaitTime') or [6, 15, 1]  # 定时等待
+        self.WaitTime = config.get('waitTime') or [6, 15, 1]  # 定时等待
         """个人信息配置"""
         self.XueHao = config.get('account')  # 学号
         self.MiMa = config.get('password')  # 密码
@@ -108,7 +108,7 @@ class User:
         rsvDay = rsvDay.strftime('%Y-%m-%d')  # 字符串化:2023-04-11
         # 等待到规定时间再进行预约
         if timeFlag:
-            Wait_OnTime(self.myWaitTime)
+            Wait_OnTime(self.WaitTime)
         # 判断该天需不需要预约
         if int(self.Weekday[wday]):
             # 时间段循环
