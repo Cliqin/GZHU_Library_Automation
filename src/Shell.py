@@ -58,7 +58,7 @@ def Predator(date, seatRoom=None, marginSpan=None, keepTime=None, minHour=4):
     user, config = MyUser()
     # 2023-12-11 100647014 ['12:00:00', '16:00:00'] 0
     msg = user.Timer_Predator(date=date, seatRoom=seatRoom, marginSpan=marginSpan, keepTime=keepTime, minHour=minHour)
-    print('抢夺操作完成',msg)
+    print('抢夺操作完成', msg)
 
 
 class Shell:
@@ -114,27 +114,33 @@ class Shell:
                     index = input("输入座位所在楼层(1-5)(回车默认选研讨间)\n")
                     index = int(index) - 1 if len(index) else None
 
-                    marginSpan = None
+                    # marginSpan = None
                     seatRoom = None
-                    if index >= 0:
+                    if index is not None:
                         for i, v in enumerate(SeatRoom[index]["children"]):
                             print(i, v['name'], v['id'])
 
                         seatRoom = SeatRoom[index]["children"][int(input("请继续选择\n"))]['id']
 
-                        marginStart = input("输入所抢时段\n开始时段(例13:00)回车默认不做限制\t")
-                        marginEnd = input("\n输入所抢时段\n结束小时(14:00)回车默认不做限制\t")
+                    marginStart = input("输入所抢时段\n开始时段(例13:00)回车默认不做限制\t")
+                    marginEnd = input("\n输入所抢时段\n结束小时(14:00)回车默认不做限制\t")
 
-                        if len(marginStart) or len(marginEnd):
-                            marginSpan = [marginStart + ":00", marginEnd + ":00"]
-                        else:
-                            marginSpan = None
+                    if len(marginStart) or len(marginEnd):
+                        marginSpan = [marginStart + ":00", marginEnd + ":00"]
+                    else:
+                        marginSpan = None
+                    minHour = input("输入最小时间间隔(例:1,2,3,4)回车默认4\t")
+                    if len(minHour):
+                        minHour = int(minHour)
+                    else:
+                        minHour = 4
 
                     keepTime = input('\n请输入持续搜索时间(单位/秒)|无需定时请按回车\n')
                     keepTime = float(keepTime) if len(keepTime) else 0
                     # 2023-12-11 100647014 ['12:00:00', '16:00:00'] 0
                     print(date, seatRoom, marginSpan, keepTime)
-                    msg = user.Timer_Predator(date=date, seatRoom=seatRoom, marginSpan=marginSpan, keepTime=keepTime)
+                    msg = user.Timer_Predator(date=date, seatRoom=seatRoom, marginSpan=marginSpan, keepTime=keepTime,
+                                              minHour=minHour)
                     print(Color(msg, 6))
                 elif mode == '3':
                     '''显示已预约的信息,再进行选择'''

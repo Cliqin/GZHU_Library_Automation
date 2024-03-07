@@ -19,7 +19,7 @@ class User:
         self.XueHao = config.get('account')  # 学号
         self.MiMa = config.get('password')  # 密码
         self.Id = config.get('selfAccid')  # 个人账号ID
-        self.FriendId = config.get('friendAccid') or 1
+        self.FriendId = config.get('friendAccid') or [1]
         self.FriendFlag = config.get('friendFlag') or 0
         '''座位配置'''
         self.Weekday = config.get('weekday')
@@ -133,8 +133,13 @@ class User:
 
     '''精准预约发送请求函数'''
 
-    def Rsv_Submit(self, info):
+    def Rsv_Submit(self, info, minUser=2):
         url = BASIC_URL + '/reserve'
+
+        resvMember = [self.Id]
+        if self.FriendFlag:
+            for i in range(minUser - 1):
+                resvMember.append(self.FriendId[i])
 
         '''座位'''
         data = {
@@ -145,7 +150,7 @@ class User:
             "resvBeginTime": f"{info.get('rsvDay')} {info.get('bt')}",
             "resvDev": [calc_dev_no(info.get('dev'))],
             "resvEndTime": f"{info.get('rsvDay')} {info.get('et')}",
-            "resvMember": [self.Id, self.FriendId] if self.FriendFlag else [self.Id],
+            "resvMember": resvMember,
             "resvProperty": 0,
             "sysKind": 8,
             "testName": "学习",
@@ -251,12 +256,10 @@ class User:
             self.FriendFlag = 0
             res = self.Rsv_Submit(info).json()
             return f"{rsvDay}, {devId}, {sT}, {eT}, {[self.Id]}, {Color(res['message'], 6)}"
-        elif minUser == 2:
-            self.FriendFlag = 1
-            res = self.Rsv_Submit(info).json()
-            return f"{rsvDay}, {devId}, {sT}, {eT},  {Color(res['message'], 6)}"
         else:
-            return "人数超过2人(功能还未完善)"
+            self.FriendFlag = 1
+            res = self.Rsv_Submit(info, minUser=minUser).json()
+            return f"{rsvDay}, {devId}, {sT}, {eT},  {Color(res['message'], 6)}"
 
     '''取消某个预约'''
 
