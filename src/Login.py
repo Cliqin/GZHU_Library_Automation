@@ -107,7 +107,11 @@ class Login:
             return IC_cookie
         except Exception as e:
             logger.error(f'\nlogin error\n错误信息:{e}')
-            self.notify('图书馆登陆异常信息', f'学号:{self.XueHao}\nlogin error\n错误信息:{e}')
+            if e.__str__() == "expected string or bytes-like object":
+                self.notify('图书馆登陆异常信息', f'{self.XueHao}密码需要更改')
+                exit(0)
+            else:
+                self.notify('图书馆登陆异常信息', f'{self.XueHao}\nlogin error\n错误信息:{e}')
             return
 
     '''假如密码失效启动通知'''

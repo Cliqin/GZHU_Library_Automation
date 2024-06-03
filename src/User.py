@@ -13,7 +13,6 @@ DT = datetime.datetime
 class User:
 
     def __init__(self, config):
-        # config = dict(config)
         self.WaitTime = config.get('waitTime') or [6, 15, 1]  # 定时等待
         """个人信息配置"""
         self.XueHao = config.get('account')  # 学号
@@ -22,11 +21,11 @@ class User:
         self.FriendId = config.get('friendAccid') or [1]
         self.FriendFlag = config.get('friendFlag') or 0
         '''座位配置'''
-        self.Weekday = config.get('weekday')
-        self.DevNo = config.get('devName')  # 座位
-        self.DevTimeSpan = config.get('timeSpan')
-        self.pushplus = config.get('pushplus')
-        self.Cookie = config.get('cookie')
+        self.Weekday = config.get('weekday')  # 需要预约的工作日
+        self.DevNo = config.get('devName')  # 设备名
+        self.DevTimeSpan = config.get('timeSpan')  # 设备使用时间
+        self.pushplus = config.get('pushplus')  # 微信pushplus
+        self.Cookie = config.get('cookie')  # 登陆信息cookie
 
         if self.Cookie == '':
             logger.error('cookie.txt未填写登录信息')
@@ -229,7 +228,8 @@ class User:
                 'uuid': i['uuid'],
                 'bt': DT.fromtimestamp(bt / 1000).strftime('%Y-%m-%d %H:%M'),
                 'et': DT.fromtimestamp(et / 1000).strftime('%H:%M'),
-                'status': i['resvStatus']
+                'status': i['resvStatus'],
+                'minUser': len(i['resvMemberInfoList'])
             }
             myList.append(item)
         return myList
@@ -302,17 +302,18 @@ class User:
         comeback_res = requests.post(url=comeBack_url, headers=self.header, json={"resvId": resvId}).json()
         return sign_res['message'] + '\t' + comeback_res['message']
 
+    def Clock_In_Seminar(self):
         # 研讨室
-        # signRoom_url = BASIC_URL + '/pad/accountByQR'  # 签到
-        # data = {
-        #     "szLogonName": self.XueHao,
-        #     "szPassword": self.MiMa,
-        #     "szCtrlSn": 1017,
-        #     "timeStamp": "84d426c725b32474aa0bc5f4a4e530cb"  # 加密时间戳,就差这一步,我草,一座大山,始终跨越不了
-        # }
-        # # stampValid_url = fBASIC_URL+'/pad/valid?timeStamp={data["timeStamp"]}'
-        #
-        # return requests.post(url=signRoom_url, headers=self.header, json=data).text
+        signRoom_url = BASIC_URL + '/pad/accountByQR'  # 签到
+        data = {
+            "szLogonName": self.XueHao,
+            "szPassword": self.MiMa,
+            "szCtrlSn": 3032,
+            "timeStamp": "ee4c76c895f62e68079eb236fbf8ceb7"  # 加密时间戳,就差这一步,我草,一座大山,始终跨越不了
+        }
+        # stampValid_url = fBASIC_URL+'/pad/valid?timeStamp={data["timeStamp"]}'
+
+        return requests.post(url=signRoom_url, headers=self.header, json=data).text
 
     '''设置Predator定时器'''
 
@@ -373,6 +374,9 @@ class User:
             else:
                 '''其他星期'''
                 for i in data['data']:
+                    if i['minUser'] > 2:
+                        continue
+
                     if '-' not in i['devName'] and i['devName'] not in RoomList.values():
                         continue
                     sT, eT = sortSpan(f'{rsvDay} {i["openTimes"][-1]["openStartTime"]}:00',

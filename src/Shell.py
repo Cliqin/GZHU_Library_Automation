@@ -72,7 +72,7 @@ class Shell:
         try:
             for _ in range(100):
                 mode = input(
-                    '1--常规约 丨 2--抢约 丨 3--取消约 | 4--改约 丨 5--签到 丨 6--我的预约 | 7--总时长 | 8--更新身份 | 9--查看配置 | 0--退出 \n')
+                    '1--常规约 丨 2--抢约 丨 3--取消约 | 4--改约 丨 5--签到 丨 6--我的预约 | 7--总时长 | 8--更新身份 | 9--研讨室签到 | 0--退出 \n')
                 # 每次循环都检查一次登陆状态
                 user.Check_Cookie()
 
@@ -160,18 +160,18 @@ class Shell:
                         print('已撤回')
                 elif mode == '4':
                     """显示已预约的信息,再进行选择"""
-                    res = user.My_Reserve()
-                    for index, i in enumerate(res):
+                    reserve_res = user.My_Reserve()
+                    for index, i in enumerate(reserve_res):
                         tmp = Color(f"{i['no']} \t{i['bt']}", 1)
                         print(f"{index}\t {tmp}--{i['et']}\t状态:{status(i['status'])}")
                     p = int(input('请选择序号0-20\n'))
 
                     pre_info = {
-                        'dev': res[p]["no"],
-                        'rsvDay': res[p]['bt'][:10],
-                        'bt': res[p]['bt'][11:] + ":00",
-                        'et': res[p]['et'] + ":00",
-                        'uuid': res[p]['uuid'],
+                        'dev': reserve_res[p]["no"],
+                        'rsvDay': reserve_res[p]['bt'][:10],
+                        'bt': reserve_res[p]['bt'][11:] + ":00",
+                        'et': reserve_res[p]['et'] + ":00",
+                        'uuid': reserve_res[p]['uuid'],
                     }
                     print('你已选中', Color(pre_info.values(), 6))
                     new_info = pre_info.copy()
@@ -185,13 +185,16 @@ class Shell:
                     print('转换后', Color(new_info.values(), 5))
                     confirm = input('1--提交|0--撤回操作\n')
                     if confirm == '1':
+                        tmp_flag = user.FriendFlag
                         print(pre_info['dev'], user.Cancel_Submit(pre_info['uuid']).json()['message'])
-
-                        res = user.Rsv_Submit(new_info).json()
+                        user.FriendFlag = 1
+                        res = user.Rsv_Submit(new_info, minUser=reserve_res[p]['minUser']).json()
                         print(Color(res["message"], 6))
 
-                        res = user.Rsv_Submit(pre_info).json()
+                        res = user.Rsv_Submit(pre_info, minUser=reserve_res[p]['minUser']).json()
                         print('重新选回座位', Color(res['message'], 6))
+                        user.FriendFlag = tmp_flag
+
                     else:
                         print('已撤回')
                 elif mode == '5':
@@ -232,7 +235,8 @@ class Shell:
                     else:
                         print('无需更新')
                 elif mode == '9':
-                    print(user)
+                    print(user.Clock_In_Seminar())
+                    # print(user)
                     # print(user.Clock_In('研讨间E13'))
                 elif mode == '0':
                     exit(0)
