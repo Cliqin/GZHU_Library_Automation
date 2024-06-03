@@ -305,7 +305,7 @@ def Wait_OnTime(myWaitTime=None):
     if myWaitTime is None:
         myWaitTime = [6, 15, 1]
 
-    tomorrow = DT.replace(DT.now(), hour=myWaitTime[0], minute=myWaitTime[1], second=myWaitTime[2], microsecond=0)
+    tomorrow = DT.replace(DT.now(), hour=myWaitTime[0], minute=myWaitTime[1], second=myWaitTime[2], microsecond=500000)
     print(f'等待到{tomorrow}再执行预约')
     time.sleep(abs((tomorrow - DT.now()).total_seconds()))
 
