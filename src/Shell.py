@@ -64,6 +64,7 @@ def Predator(date, seatRoom=None, marginSpan=None, keepTime=None, minHour=4):
 class Shell:
     def __init__(self, mySchedule):
         self.mySchedule = mySchedule
+        print(DT.now().strftime('%Y-%m-%d %H:%M:%S'))
 
     def __call__(self, *args, **kwargs):
         # 返回一个更新好cookie的user和config

@@ -173,9 +173,10 @@ class User:
     def My_Reserve(self, flag=None):
         url = BASIC_URL + '/reserve/resvInfo'
         # 默认请求表单 请求所有时间段 除了结束的预约信息
+        today = DT.now().date()
         params = {
-            'beginDate': '2022-04-17',
-            'endDate': '2025-09-13',
+            'beginDate': (today - datetime.timedelta(days=2)).strftime('%Y-%m-%d'),
+            'endDate': (today + datetime.timedelta(days=14)).strftime('%Y-%m-%d'),
             'needStatus': 262,
             'page': 1,
             'pageNum': 100,
