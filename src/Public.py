@@ -309,44 +309,6 @@ def Wait_OnTime(myWaitTime=None):
     time.sleep(abs((tomorrow - DT.now()).total_seconds()))
 
 
-# def Wait_OnTime(myWaitTime=None):
-#     # 默认等待时间为当天的6:15:01
-#     if myWaitTime is None:
-#         myWaitTime = [6, 15, 1]
-#
-#     # 获取当前时间
-#     now = DT.now()
-#
-#     # 设定目标时间为当天的指定时间
-#     target_time = now.replace(hour=myWaitTime[0], minute=myWaitTime[1], second=myWaitTime[2], microsecond=0)
-#
-#     # 如果目标时间已经过去，设定为次日同一时间
-#     # if target_time <= now:
-#     #     target_time += timedelta(days=1)
-#
-#     print(f'当前时间: {now}')
-#     print(f'等待到 {target_time} 再执行预约')
-#
-#     # 计算需要等待的总秒数
-#     total_sleep_seconds = (target_time - now).total_seconds()
-#
-#     # 等待直到接近目标时间
-#     while True:
-#         now = DT.now()
-#         if now >= target_time:
-#             break
-#         sleep_duration = (target_time - now).total_seconds()
-#         # 如果剩余时间大于0.1秒，分阶段睡眠
-#         if sleep_duration > 0.1:
-#             time.sleep(0.1)
-#         else:
-#             time.sleep(sleep_duration)
-#             break
-#
-#     # 打印达到目标时间的实际时间
-#     print(f'达到时间: {DT.now()}')
-
-
 '''彩色打印字符串'''
 
 

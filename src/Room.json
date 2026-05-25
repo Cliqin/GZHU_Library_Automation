@@ -9,15 +9,18 @@
       "children": [
         {
           "id": 101497594,
-          "name": "图书馆一楼学习中心",
-          "spanDay": false
+          "name": "一楼学习共享空间",
+          "spanDay": false,
+          "onlyUsedByDept": false
         },
         {
           "id": 100458039,
           "name": "五楼广州文献资源中心",
-          "spanDay": false
+          "spanDay": false,
+          "onlyUsedByDept": false
         }
-      ]
+      ],
+      "onlyUsedByDept": false
     },
     {
       "id": 3,
@@ -27,9 +30,25 @@
         {
           "id": 101497597,
           "name": "桂花岗图书馆",
-          "spanDay": false
+          "spanDay": false,
+          "onlyUsedByDept": false
         }
-      ]
+      ],
+      "onlyUsedByDept": false
+    },
+    {
+      "id": 4,
+      "name": "黄埔校区",
+      "spanDay": false,
+      "children": [
+        {
+          "id": 101497598,
+          "name": "黄埔分馆（B1栋）",
+          "spanDay": false,
+          "onlyUsedByDept": false
+        }
+      ],
+      "onlyUsedByDept": false
     }
   ],
   "count": 0,
